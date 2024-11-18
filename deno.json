@@ -1,0 +1,28 @@
+{
+    "name": "@nilsd/openai-assistant-lite",
+    "version": "0.2.3",
+    "exports": "./mod.ts",
+    "license": "MIT",
+    "tasks": {
+        "dev": "deno run --watch main.ts"
+    },
+    "imports": {
+        "@openai/openai": "jsr:@openai/openai@^4.71.1",
+        "@std/assert": "jsr:@std/assert@1"
+    },
+    "fmt": {
+        "lineWidth": 120,
+        "indentWidth": 4,
+        "semiColons": true,
+        "singleQuote": true
+    },
+    "publish": {
+        "exclude": [
+            ".vscode",
+            ".gitattributes",
+            ".gitignore",
+            "deno.json",
+            "deno.lock"
+        ]
+    }
+}
