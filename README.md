@@ -15,7 +15,7 @@ const assistant = new Assistant({
     assistantId: 'your_assistant_id' // Ex. 'asst_abc123abc123'
 });
 
-const result = await assistant.sendRequest('Hello, how are you?');
+const result = await assistant.requestReply('Hello, how are you?');
 
 console.log(result.reply);
 ```
