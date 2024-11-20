@@ -1,7 +1,7 @@
 {
     "name": "@nilsd/openai-assistant-lite",
     "version": "0.2.5",
-    "exports": "./mod.ts",
+    "exports": "./src/mod.ts",
     "license": "MIT",
     "tasks": {
         "dev": "deno run --watch main.ts"
