@@ -1,22 +1,22 @@
 import OpenAI from '@openai/openai';
 
-export interface AssistantOptions {
-    /**
-     * Your OpenAI API token
-     */
-    apiKey: string;
-    /**
-     * Your OpenAI Assistant ID (eg. 'asst_abc123abc123')
-     */
-    assistantId: string;
-}
+import type { AssistantOptions } from './AssistantOptions.ts';
+import type { AssistantResponse } from './AssistantResponse.ts';
+import {
+    AssistantError,
+    AssistantErrorAlreadyProcessing,
+    AssistantErrorNoReply,
+    AssistantErrorNotInitialized,
+    AssistantErrorThreadNotFound,
+} from './AssistantError.ts';
 
 /**
- * The main class to represent your OpenAI Assistant
+ * The main class to represent your assistant
  */
-export class Assistant {
+class Assistant {
     #openAi: OpenAI;
     #assistantId: string;
+    #thread?: OpenAI.Beta.Threads.Thread;
     #isProcessing: boolean;
 
     constructor({ apiKey, assistantId }: AssistantOptions) {
@@ -26,6 +26,31 @@ export class Assistant {
 
         this.#assistantId = assistantId;
         this.#isProcessing = false;
+    }
+
+    /**
+     * Initialize with an existing thread or leave out to start a new thread (ex. thread_abc123abc123)
+     * @param  {String} threadId    Optional ID of an existing thread to continue
+     * @return {String}             The ID of the used thread
+     * @throws {AssistantError}
+     */
+    async initialize(threadId?: string): Promise<string> {
+        try {
+            this.#thread = threadId ? await this.#getThread(threadId) : await this.#createThread();
+
+            return this.#thread.id;
+        } catch (error) {
+            console.error(error);
+            throw new AssistantErrorThreadNotFound();
+        }
+    }
+
+    async #getThread(threadId: string) {
+        return await this.#openAi.beta.threads.retrieve(threadId);
+    }
+
+    async #createThread() {
+        return await this.#openAi.beta.threads.create();
     }
 
     async #getLastSystemMessage(run: OpenAI.Beta.Threads.Runs.Run) {
@@ -54,15 +79,13 @@ export class Assistant {
         if (run.status === 'completed') {
             const reply = await this.#getLastSystemMessage(run);
             if (!reply) {
-                throw new AssistantError('noReply');
+                throw new AssistantErrorNoReply();
             }
 
             return reply;
         }
 
-        console.error(run.last_error?.message ?? 'OpenAI: Unknown error');
-
-        throw new AssistantError('unknown');
+        throw new AssistantError(run.last_error?.message ?? 'OpenAI: Unknown error');
     }
 
     /**
@@ -73,19 +96,20 @@ export class Assistant {
      */
     async requestReply(message: string): Promise<AssistantResponse> {
         try {
+            if (!this.#thread) {
+                throw new AssistantErrorNotInitialized();
+            }
             if (this.#isProcessing) {
-                throw new AssistantError('alreadyProcessing');
+                throw new AssistantErrorAlreadyProcessing();
             }
 
             this.#isProcessing = true;
 
-            const run = await this.#openAi.beta.threads.createAndRunPoll({
+            const run = await this.#openAi.beta.threads.runs.createAndPoll(this.#thread.id, {
                 assistant_id: this.#assistantId,
-                thread: {
-                    messages: [
-                        { role: 'user', content: message },
-                    ],
-                },
+                additional_messages: [
+                    { role: 'user', content: message },
+                ],
             });
 
             const reply = await this.#handleReply(run);
@@ -100,28 +124,4 @@ export class Assistant {
     }
 }
 
-export type AssistantErrorMessage = 'unknown' | 'alreadyProcessing' | 'noReply';
-
-export interface AssistantResponse {
-    /**
-     * The message you sent to your assistant
-     */
-    originalMessage: string;
-    /**
-     * The reply from your assistant
-     */
-    reply: string;
-}
-
-/**
- * All errors thrown will be of this type.
- * See AssistantErrorMessage for known errors.
- *
- * Fatal errors from OpenAI will be caught and logged to the console,
- * and your request will return an AssistantError with 'unknown' as message.
- */
-export class AssistantError extends Error {
-    constructor(message: AssistantErrorMessage) {
-        super(message);
-    }
-}
+export { Assistant };
