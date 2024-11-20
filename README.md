@@ -12,10 +12,12 @@ import { Assistant } from '@nilsd/openai-assistant-lite';
 
 const assistant = new Assistant({
     apiKey: 'your_openai_api_key',
-    assistantId: 'your_assistant_id' // Ex. 'asst_abc123abc123'
+    assistantId: 'your_assistant_id' // Ex. 'asst_abc123abc123',
 });
 
-const result = await assistant.requestReply('Hello, how are you?');
+await assistant.initialize();
 
-console.log(result.reply);
+const response = await assistant.requestReply('How are you doing?');
+
+console.log(response.reply);
 ```
